@@ -832,6 +832,15 @@
 				return this;
 			},
 
+            off: function(evt, callback) {
+                if($) {
+                    this.$element.off(evt, callback);
+                    this.$sliderElem.off(evt, callback);
+                } else {
+                    this._unbindNonQueryEventHandler(evt, callback);
+                }
+            },
+
 			getAttribute: function(attribute) {
 				if(attribute) {
 					return this.options[attribute];
@@ -888,11 +897,22 @@
 				this.sliderElem.removeEventListener("mousedown", this.mousedown, false);
 			},
 			_bindNonQueryEventHandler: function(evt, callback) {
-				if(this.eventToCallbackMap[evt]===undefined) {
+				if(this.eventToCallbackMap[evt] === undefined) {
 					this.eventToCallbackMap[evt] = [];
 				}
 				this.eventToCallbackMap[evt].push(callback);
 			},
+            _unbindNonQueryEventHandler: function(evt, callback) {
+                var callbacks = this.eventToCallbackMap[evt];
+                if(callbacks !== undefined) {
+                    for (var i = 0; i < callbacks.length; i++) {
+                        if (callbacks[i] === callback) {
+                            callbacks.splice(i, 1);
+                            break;
+                        }
+                    }
+                }
+            },
 			_cleanUpEventCallbacksMap: function() {
 				var eventNames = Object.keys(this.eventToCallbackMap);
 				for(var i = 0; i < eventNames.length; i++) {
@@ -903,9 +923,12 @@
 			_showTooltip: function() {
 				if (this.options.tooltip_split === false ){
 	            	this._addClass(this.tooltip, 'in');
+	            	this.tooltip_min.style.display = 'none';
+	            	this.tooltip_max.style.display = 'none';
 		        } else {
 		            this._addClass(this.tooltip_min, 'in');
 		            this._addClass(this.tooltip_max, 'in');
+		            this.tooltip.style.display = 'none';
 		        }
 				this.over = true;
 			},
@@ -1222,10 +1245,13 @@
 			},
 			_adjustPercentageForRangeSliders: function(percentage) {
 				if (this.options.range) {
-					if (this.dragged === 0 && this.percentage[1] < percentage) {
+					var precision = this._getNumDigitsAfterDecimalPlace(percentage);
+					precision = precision ? precision - 1 : 0;
+					var percentageWithAdjustedPrecision = this._applyToFixedAndParseFloat(percentage, precision);
+					if (this.dragged === 0 && this._applyToFixedAndParseFloat(this.percentage[1], precision) < percentageWithAdjustedPrecision) {
 						this.percentage[0] = this.percentage[1];
 						this.dragged = 1;
-					} else if (this.dragged === 1 && this.percentage[0] > percentage) {
+					} else if (this.dragged === 1 && this._applyToFixedAndParseFloat(this.percentage[0], precision) > percentageWithAdjustedPrecision) {
 						this.percentage[1] = this.percentage[0];
 						this.dragged = 0;
 					}
